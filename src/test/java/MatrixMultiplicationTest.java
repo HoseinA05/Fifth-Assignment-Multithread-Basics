@@ -40,7 +40,7 @@ public class MatrixMultiplicationTest {
     }
 
     @Test
-    public void testParallelizeMatMul() {
+    public void testParallelizeMatMul() throws InterruptedException {
         Assertions.assertEquals(matrix_C, MatrixMultiplication.ParallelizeMatMul(matrix_A, matrix_B));
     }
 }
