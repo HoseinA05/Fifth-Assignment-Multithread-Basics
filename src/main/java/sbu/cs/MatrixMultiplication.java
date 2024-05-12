@@ -2,139 +2,147 @@ package sbu.cs;
 
 import java.util.ArrayList;
 import java.util.List;
-
 public class MatrixMultiplication {
+    public static class BlockMultiplier implements Runnable {
+        List<List<Integer>> subMatrix_A;
+        List<List<Integer>> matrix_B;
+        public static List<List<Integer>> resultMatrix_1 = new ArrayList<>();
+        public static List<List<Integer>> resultMatrix_2 = new ArrayList<>();
+        public static List<List<Integer>> resultMatrix_3 = new ArrayList<>();
+        public static List<List<Integer>> resultMatrix_4 = new ArrayList<>();
+        int part = 0;
 
-    // You are allowed to change all code in the BlockMultiplier class
-    public static class BlockMultiplier implements Runnable
-    {
-        List<List<Integer>> tempMatrixProduct;
-        List<List<Integer>> m1;
-        List<List<Integer>> m2;
-        int p, q, r;
-        // m1 -> p*q ,, m2 -> q*r
-        public BlockMultiplier(List<List<Integer>> m1, List<List<Integer>> m2) {
-            tempMatrixProduct = new ArrayList<>();
-            this.m1 = m1;
-            this.m2 = m2;
+        public BlockMultiplier(List<List<Integer>> subMatrix_A, List<List<Integer>> matrix_B, int part) {
+            this.subMatrix_A = subMatrix_A;
+            this.matrix_B = matrix_B;
+            this.part = part;
         }
 
         @Override
         public void run() {
-            p = m1.size();
-            q = m1.getFirst().size();
-            r = m2.getFirst().size();
-
-            for (int i = 0; i < p; i++) {
-                List<Integer> row = new ArrayList<>();
-                for (int j = 0; j < r; j++) {
+            for (int i = 0; i < subMatrix_A.size(); i++) {
+                ArrayList<Integer> row = new ArrayList<>();
+                for (int j = 0; j < matrix_B.getFirst().size(); j++) {
                     int sum = 0;
-                    for (int k = 0; k < q; k++)
-                        sum += m1.get(i).get(k) * m2.get(k).get(j);
+                    for (int k = 0; k < matrix_B.size(); k++) {
+                        sum += subMatrix_A.get(i).get(k) * matrix_B.get(k).get(j);
+                    }
                     row.add(sum);
                 }
-                tempMatrixProduct.add(row);
+                if (part == 1) resultMatrix_1.add(row);
+                else if (part == 2) resultMatrix_2.add(row);
+                else if (part == 3) resultMatrix_3.add(row);
+                else if (part == 4) resultMatrix_4.add(row);
             }
         }
     }
 
-    /*
-    Matrix A is of the form p x q
-    Matrix B is of the form q x r
-    both p and r are even numbers
-    */
     public static List<List<Integer>> ParallelizeMatMul(List<List<Integer>> matrix_A, List<List<Integer>> matrix_B) throws InterruptedException {
-        List<List<Integer>> matrix_C = new ArrayList<>();
+        List<List<Integer>> subMatrix_a1 = new ArrayList<>();
+        List<List<Integer>> subMatrix_a2 = new ArrayList<>();
+        List<List<Integer>> subMatrix_a3 = new ArrayList<>();
+        List<List<Integer>> subMatrix_a4 = new ArrayList<>();
 
-        int p = matrix_A.size();
-        int q = matrix_A.getFirst().size();
-        int r = matrix_B.getFirst().size();
-
-        List<List<Integer>> mat_A1 = new ArrayList<>();
-        List<List<Integer>> mat_A2 = new ArrayList<>();
-        List<List<Integer>> mat_B1 = new ArrayList<>();
-        List<List<Integer>> mat_B2 = new ArrayList<>();
-
-        for (int i = 0; i < p; i++) {
-            List<Integer> row = new ArrayList<>();
-            for (int j = 0; j < r; j++) {
-                row.add(0);
-            }
-            matrix_C.add(i, row);
-        }
-
-        for (int i = 0; i < p/2; i++){
-            List<Integer> row = new ArrayList<>();
-            for (int j = 0; j < q; j++){
+        for (int i = 0; i < matrix_A.size() / 4; i++) {
+            ArrayList<Integer> row = new ArrayList<>();
+            for (int j = 0; j < matrix_A.getFirst().size(); j++) {
                 row.add(matrix_A.get(i).get(j));
             }
-            mat_A1.add(row);
+            subMatrix_a1.add(row);
         }
-
-        for (int i = p/2; i < p; i++){
-            List<Integer> row = new ArrayList<>();
-            for (int j = 0; j < q; j++){
+        for (int i = matrix_A.size() / 4; i < 2 * matrix_A.size() / 4; i++) {
+            ArrayList<Integer> row = new ArrayList<>();
+            for (int j = 0; j < matrix_A.getFirst().size(); j++) {
                 row.add(matrix_A.get(i).get(j));
             }
-            mat_A2.add(row);
+            subMatrix_a2.add(row);
         }
-
-        for (int i = 0; i < q; i++){
-            List<Integer> row = new ArrayList<>();
-            for (int j = 0; j < r/2; j++){
-                row.add(matrix_B.get(i).get(j));
+        for (int i = 2 * matrix_A.size() / 4; i < 3 * matrix_A.size() / 4; i++) {
+            ArrayList<Integer> row = new ArrayList<>();
+            for (int j = 0; j < matrix_A.getFirst().size(); j++) {
+                row.add(matrix_A.get(i).get(j));
             }
-            mat_B1.add(row);
+            subMatrix_a3.add(row);
         }
-
-        for (int i = 0; i < q; i++){
-            List<Integer> row = new ArrayList<>();
-            for (int j = r/2; j < r; j++){
-                row.add(matrix_B.get(i).get(j));
+        for (int i = 3 * matrix_A.size() / 4; i < 4 * matrix_A.size() / 4; i++) {
+            ArrayList<Integer> row = new ArrayList<>();
+            for (int j = 0; j < matrix_A.getFirst().size(); j++) {
+                row.add(matrix_A.get(i).get(j));
             }
-            mat_B2.add(row);
+            subMatrix_a4.add(row);
         }
 
-        BlockMultiplier block_1 = new BlockMultiplier(mat_A1, mat_B1);
-        BlockMultiplier block_2 = new BlockMultiplier(mat_A1, mat_B2);
-        BlockMultiplier block_3 = new BlockMultiplier(mat_A2, mat_B1);
-        BlockMultiplier block_4 = new BlockMultiplier(mat_A2, mat_B2);
+        BlockMultiplier blockMultiplier_1 = new BlockMultiplier(subMatrix_a1, matrix_B, 1);
+        BlockMultiplier blockMultiplier_2 = new BlockMultiplier(subMatrix_a2, matrix_B, 2);
+        BlockMultiplier blockMultiplier_3 = new BlockMultiplier(subMatrix_a3, matrix_B, 3);
+        BlockMultiplier blockMultiplier_4 = new BlockMultiplier(subMatrix_a4, matrix_B, 4);
 
-        Thread thread1 = new Thread(block_1);
-        Thread thread2 = new Thread(block_2);
-        Thread thread3 = new Thread(block_3);
-        Thread thread4 = new Thread(block_4);
+        Thread thread_1 = new Thread(blockMultiplier_1);
+        Thread thread_2 = new Thread(blockMultiplier_2);
+        Thread thread_3 = new Thread(blockMultiplier_3);
+        Thread thread_4 = new Thread(blockMultiplier_4);
 
-        thread1.start();
-        thread2.start();
-        thread3.start();
-        thread4.start();
+        thread_1.start();
+        thread_2.start();
+        thread_3.start();
+        thread_4.start();
 
-        thread1.join();
-        thread2.join();
-        thread3.join();
-        thread4.join();
+        thread_1.join();
+        thread_2.join();
+        thread_3.join();
+        thread_4.join();
 
-        for (int i = 0; i < p; i++) {
-            for (int j = 0; j < r; j++) {
-                if (i < p/2 && j < r/2){
-                    matrix_C.get(i).set(j, block_1.tempMatrixProduct.get(i).get(j));
-                }
-                else if (i < p/2 && j >= r/2){
-                    matrix_C.get(i).set(j, block_2.tempMatrixProduct.get(i).get(j-r/2));
-                }
-                else if (i >= p/2 && j < r/2){
-                    matrix_C.get(i).set(j, block_3.tempMatrixProduct.get(i-p/2).get(j));
-                }
-                else{
-                    matrix_C.get(i).set(j, block_4.tempMatrixProduct.get(i-p/2).get(j-r/2));
-                }
-            }
-        }
+        List<List<Integer>> resultMatrix = new ArrayList<>();
+        resultMatrix.addAll(BlockMultiplier.resultMatrix_1);
+        resultMatrix.addAll(BlockMultiplier.resultMatrix_2);
+        resultMatrix.addAll(BlockMultiplier.resultMatrix_3);
+        resultMatrix.addAll(BlockMultiplier.resultMatrix_4);
 
-        return matrix_C;
+        // for(List<Integer> row: BlockMultiplier.resultMatrix_1) System.out.println(row);
+        // for(List<Integer> row: BlockMultiplier.resultMatrix_2) System.out.println(row);
+        // for(List<Integer> row: BlockMultiplier.resultMatrix_3) System.out.println(row);
+        // for(List<Integer> row: BlockMultiplier.resultMatrix_4) System.out.println(row);
+
+        // for(List<Integer> row: resultMatrix) System.out.println(row);
+
+        return resultMatrix;
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
+        List<List<Integer>> a = new ArrayList<>();
+        ArrayList<Integer> a1 = new ArrayList<>();
+        a1.add(1);
+        a1.add(2);
+        ArrayList<Integer> a2 = new ArrayList<>();
+        a2.add(1);
+        a2.add(2);
+        ArrayList<Integer> a3 = new ArrayList<>();
+        a3.add(1);
+        a3.add(2);
+        ArrayList<Integer> a4 = new ArrayList<>();
+        a4.add(1);
+        a4.add(2);
+        a.add(a1);
+        a.add(a2);
+        a.add(a3);
+        a.add(a4);
+
+        List<List<Integer>> b = new ArrayList<>();
+        ArrayList<Integer> b1 = new ArrayList<>();
+        b1.add(1);
+        b1.add(2);
+        b1.add(3);
+        b1.add(4);
+        ArrayList<Integer> b2 = new ArrayList<>();
+        b2.add(1);
+        b2.add(2);
+        b2.add(3);
+        b2.add(4);
+        b.add(b1);
+        b.add(b2);
+        ParallelizeMatMul(a, b);
+
+
     }
 }
+
